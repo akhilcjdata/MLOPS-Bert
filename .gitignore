@@ -174,5 +174,4 @@ notebooks/
 local_s3/
 notebooks
 
-data/ 
-models/
+models
