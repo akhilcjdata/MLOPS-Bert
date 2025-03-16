@@ -110,8 +110,6 @@ def main():
         test_size = params['data_ingestion']['test_size']
         #test_size = 0.20
         data_path = 'https://raw.githubusercontent.com/vikashishere/Datasets/refs/heads/main/data.csv'
-        # s3 = s3_connection.s3_operations("akhil-bucket-mlops","AKIAYHJANAQCIHGDP53V","ylU0bBumScdvh/BzEKasGI8kPq57gkah5kHHy7I8")
-        # df = s3.fetch_file_from_s3("data.csv")
         df = load_data(data_url=data_path)
         
         final_df = preprocess_data(df)
