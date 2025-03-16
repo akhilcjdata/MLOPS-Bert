@@ -1,0 +1,109 @@
+schema: '2.0'
+stages:
+  data_ingestion:
+    cmd: python -m src.data.data_ingestion
+    deps:
+    - path: src/data/data_ingestion.py
+      hash: md5
+      md5: 2c6c2322bb8c38b3f6470f26c038e909
+      size: 4815
+    params:
+      params.yaml:
+        data_ingestion.test_size: 0.2
+    outs:
+    - path: data/raw
+      hash: md5
+      md5: 0697c70a3dadc4996874040c4c51c38f.dir
+      size: 649243
+      nfiles: 2
+  data_preprocessing:
+    cmd: python -m src.data.data_preprocessing
+    deps:
+    - path: data/raw
+      hash: md5
+      md5: 0697c70a3dadc4996874040c4c51c38f.dir
+      size: 649243
+      nfiles: 2
+    - path: src/data/data_preprocessing.py
+      hash: md5
+      md5: b75dbfb2ff9bef272c8d8a85aca1e2f6
+      size: 2846
+    outs:
+    - path: data/interim
+      hash: md5
+      md5: a521fea735814b520b1b4166bf7970a5.dir
+      size: 623842
+      nfiles: 2
+  feature_engineering:
+    cmd: python -m src.features.feature_engineering
+    deps:
+    - path: data/interim
+      hash: md5
+      md5: a521fea735814b520b1b4166bf7970a5.dir
+      size: 623842
+      nfiles: 2
+    - path: src/features/feature_engineering.py
+      hash: md5
+      md5: 4bf3a0b35b5c2f820240a4f27980a686
+      size: 5680
+    params:
+      params.yaml:
+        feature_engineering.max_features: 768
+    outs:
+    - path: data/processed
+      hash: md5
+      md5: 06b851b6e5834133d2d3c15b957d569a.dir
+      size: 4369100
+      nfiles: 2
+    - path: models/bert_tokenizer_model_info.pkl
+      hash: md5
+      md5: 27fc8e9d994525a5da87e3872456d6c8
+      size: 68
+  model_building:
+    cmd: python -m src.model.model_building
+    deps:
+    - path: data/processed
+      hash: md5
+      md5: 06b851b6e5834133d2d3c15b957d569a.dir
+      size: 4369100
+      nfiles: 2
+    - path: src/model/model_building.py
+      hash: md5
+      md5: ade78e67cf0db85d8932a27174cb3040
+      size: 4824
+    outs:
+    - path: models/bert_model_info.pkl
+      hash: md5
+      md5: 5d29659d815e015acaf56a3d9a4043d0
+      size: 80
+  model_evaluation:
+    cmd: python -m src.model.model_evaluation
+    deps:
+    - path: models/bert_model_info.pkl
+      hash: md5
+      md5: 5d29659d815e015acaf56a3d9a4043d0
+      size: 80
+    - path: src/model/model_evaluation.py
+      hash: md5
+      md5: 6f7a17724dc722083eebb2e131bfa695
+      size: 7766
+    outs:
+    - path: reports/experiment_info.json
+      hash: md5
+      md5: e1672b97ae7b5216664c864c494429f3
+      size: 87
+    - path: reports/metrics.json
+      hash: md5
+      md5: 90981f6b3045b8bfe4d1d0e8733cf6cf
+      size: 116
+  model_registration:
+    cmd: python -m src.model.register_model
+    deps:
+    - path: reports/experiment_info.json
+      hash: md5
+      md5: e1672b97ae7b5216664c864c494429f3
+      size: 87
+    - path: src/model/register_model.py
+      hash: md5
+      md5: a8b3911c2410dc4b8245db86bafae514
+      size: 3254
