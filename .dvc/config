@@ -2,5 +2,5 @@
     remote = myremote
 ['remote "myrmote"']
     url = s3://akhil-bucket-mlops
-['remote "myremote"']
-    url = s3://akhil-bucket-mlops
+['remote "origin"']
+    url = auto
