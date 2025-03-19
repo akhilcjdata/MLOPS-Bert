@@ -29,7 +29,6 @@ jobs:
           
 
       - name: run pipeline
-        - name: run pipeline
         env:
           CAPSTONE_TEST: ${{ secrets.CAPSTONE_TEST }}
         run: |
