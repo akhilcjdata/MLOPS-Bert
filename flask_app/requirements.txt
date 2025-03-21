@@ -1,0 +1,10 @@
+dagshub
+Flask
+mlflow
+mlflow_skinny
+numpy
+pandas
+prometheus_client
+spacy
+torch
+transformers
