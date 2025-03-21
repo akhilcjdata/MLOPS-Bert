@@ -4,7 +4,6 @@ import os
 import pandas as pd
 import numpy as np
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-import pickle
 from transformers import BertTokenizer
 
 class TestModelLoading(unittest.TestCase):
@@ -26,11 +25,16 @@ class TestModelLoading(unittest.TestCase):
         # Set up MLflow tracking URI
         mlflow.set_tracking_uri(f'{dagshub_url}/{repo_owner}/{repo_name}.mlflow')
 
-        # Load the new model from MLflow model registry
-        cls.new_model_name = "my_model"
-        cls.new_model_version = cls.get_latest_model_version(cls.new_model_name)
-        cls.new_model_uri = f'models:/{cls.new_model_name}/{cls.new_model_version}'
-        cls.new_model = mlflow.pyfunc.load_model(cls.new_model_uri)
+        # Verify model exists before attempting to load
+        cls.model_name = "my_model"
+        cls.model_version = cls.get_latest_model_version(cls.model_name)
+        
+        if cls.model_version is None:
+            raise ValueError(f"No model with name '{cls.model_name}' found in the registry")
+            
+        cls.model_uri = f'models:/{cls.model_name}/{cls.model_version}'
+        print(f"Loading model from: {cls.model_uri}")
+        cls.model = mlflow.pyfunc.load_model(cls.model_uri)
 
         # Load BERT tokenizer
         cls.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
@@ -39,13 +43,33 @@ class TestModelLoading(unittest.TestCase):
         cls.holdout_data = pd.read_csv('data/processed/test_data.csv')
 
     @staticmethod
-    def get_latest_model_version(model_name, stage="Staging"):
+    def get_latest_model_version(model_name):
+        """Get the latest version of a model, avoiding deprecated stages API"""
         client = mlflow.MlflowClient()
-        latest_version = client.get_latest_versions(model_name, stages=[stage])
-        return latest_version[0].version if latest_version else None
+        
+        try:
+            # First check if model exists
+            model_details = client.search_registered_models(filter_string=f"name='{model_name}'")
+            if not model_details:
+                print(f"No model found with name: {model_name}")
+                return None
+                
+            # Get all versions
+            versions = client.search_model_versions(f"name='{model_name}'")
+            if not versions:
+                print(f"No versions found for model: {model_name}")
+                return None
+                
+            # Find the latest version by creation timestamp
+            latest_version = sorted(versions, key=lambda x: x.creation_timestamp, reverse=True)[0]
+            return latest_version.version
+            
+        except mlflow.exceptions.MlflowException as e:
+            print(f"Error retrieving model: {e}")
+            return None
 
     def test_model_loaded_properly(self):
-        self.assertIsNotNone(self.new_model)
+        self.assertIsNotNone(self.model)
 
     def test_model_signature(self):
         # Create a dummy input for the model based on BERT's expected input format
@@ -67,8 +91,8 @@ class TestModelLoading(unittest.TestCase):
             'token_type_ids': [encoded_input['token_type_ids'][0].tolist()]
         })
 
-        # Predict using the new model to verify the input and output shapes
-        prediction = self.new_model.predict(input_df)
+        # Predict using the model to verify the input and output shapes
+        prediction = self.model.predict(input_df)
 
         # Verify the output shape (assuming binary classification with a single output)
         self.assertEqual(len(prediction), input_df.shape[0])
@@ -104,17 +128,23 @@ class TestModelLoading(unittest.TestCase):
             })
             
             # Get predictions for this batch
-            batch_predictions = self.new_model.predict(batch_df)
+            batch_predictions = self.model.predict(batch_df)
             all_predictions.extend(batch_predictions)
         
         # Convert predictions to numpy array
-        y_pred_new = np.array(all_predictions)
+        y_pred = np.array(all_predictions)
 
-        # Calculate performance metrics for the new model
-        accuracy_new = accuracy_score(y_holdout, y_pred_new)
-        precision_new = precision_score(y_holdout, y_pred_new)
-        recall_new = recall_score(y_holdout, y_pred_new)
-        f1_new = f1_score(y_holdout, y_pred_new)
+        # Calculate performance metrics for the model
+        accuracy = accuracy_score(y_holdout, y_pred)
+        precision = precision_score(y_holdout, y_pred)
+        recall = recall_score(y_holdout, y_pred)
+        f1 = f1_score(y_holdout, y_pred)
+        
+        print(f"\nModel Performance Metrics:")
+        print(f"Accuracy: {accuracy:.4f}")
+        print(f"Precision: {precision:.4f}")
+        print(f"Recall: {recall:.4f}")
+        print(f"F1 Score: {f1:.4f}")
 
         # Define expected thresholds for the performance metrics
         expected_accuracy = 0.70
@@ -122,11 +152,11 @@ class TestModelLoading(unittest.TestCase):
         expected_recall = 0.70
         expected_f1 = 0.70
 
-        # Assert that the new model meets the performance thresholds
-        self.assertGreaterEqual(accuracy_new, expected_accuracy, f'Accuracy should be at least {expected_accuracy}')
-        self.assertGreaterEqual(precision_new, expected_precision, f'Precision should be at least {expected_precision}')
-        self.assertGreaterEqual(recall_new, expected_recall, f'Recall should be at least {expected_recall}')
-        self.assertGreaterEqual(f1_new, expected_f1, f'F1 score should be at least {expected_f1}')
+        # Assert that the model meets the performance thresholds
+        self.assertGreaterEqual(accuracy, expected_accuracy, f'Accuracy should be at least {expected_accuracy}')
+        self.assertGreaterEqual(precision, expected_precision, f'Precision should be at least {expected_precision}')
+        self.assertGreaterEqual(recall, expected_recall, f'Recall should be at least {expected_recall}')
+        self.assertGreaterEqual(f1, expected_f1, f'F1 score should be at least {expected_f1}')
 
 if __name__ == "__main__":
     unittest.main()
