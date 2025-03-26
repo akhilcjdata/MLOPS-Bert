@@ -6,7 +6,7 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
 from transformers import BertTokenizer, BertForSequenceClassification
-from transformers.optimization import AdamW
+from torch.optim import AdamW
 from sklearn.metrics import accuracy_score
 from src.logger import logging
 
