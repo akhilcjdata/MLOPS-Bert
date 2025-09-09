@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, session, redirect, url_for
 import mlflow
 import pickle
 import os
@@ -12,6 +12,7 @@ import dagshub
 import warnings
 import torch
 from transformers import AutoTokenizer
+import datetime
 
 warnings.simplefilter("ignore", UserWarning)
 warnings.filterwarnings("ignore")
@@ -60,7 +61,7 @@ def removing_punctuations(text):
     doc = nlp(text)
     text = [token.text for token in doc if not token.is_punct]
     text = ' '.join(text)
-    text = re.sub('\s+', ' ', text).strip()
+    text = re.sub(r'\s+', ' ', text).strip()
     return text
 
 def removing_urls(text):
@@ -114,6 +115,9 @@ mlflow.set_tracking_uri(f'{dagshub_url}/{repo_owner}/{repo_name}.mlflow')
 # Initialize Flask app
 app = Flask(__name__)
 
+# Set a secret key for sessions
+app.secret_key = os.environ.get('SECRET_KEY', 'dev_secret_key_for_chat_history')
+
 # Create a custom registry for metrics
 registry = CollectorRegistry()
 
@@ -127,6 +131,29 @@ REQUEST_LATENCY = Histogram(
 PREDICTION_COUNT = Counter(
     "model_prediction_count", "Count of predictions for each class", ["prediction"], registry=registry
 )
+
+def get_chat_history():
+    """Get chat history from session"""
+    return session.get('chat_history', [])
+
+def add_to_chat_history(text, prediction):
+    """Add a new chat entry to session history"""
+    if 'chat_history' not in session:
+        session['chat_history'] = []
+    
+    chat_entry = {
+        'timestamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'text': text,
+        'prediction': prediction,
+        'sentiment': "Positive" if prediction == 1 else "Negative"
+    }
+    
+    session['chat_history'].append(chat_entry)
+    # Keep only last 50 entries to prevent session from growing too large
+    if len(session['chat_history']) > 50:
+        session['chat_history'] = session['chat_history'][-50:]
+    
+    session.modified = True
 
 # Load tokenizer
 tokenizer_data = pickle.load(open('models/bert_tokenizer_model_info.pkl', 'rb'))
@@ -284,6 +311,9 @@ def predict():
         print(f"Prediction (raw): {prediction}")
         print(f"Sentiment: {sentiment_text}")
         
+        # Add to chat history
+        add_to_chat_history(text, prediction)
+        
         # Increment prediction count metric
         PREDICTION_COUNT.labels(prediction=str(prediction)).inc()
         
@@ -309,6 +339,18 @@ def predict():
 def metrics():
     """Expose Prometheus metrics."""
     return generate_latest(registry), 200, {"Content-Type": CONTENT_TYPE_LATEST}
+
+@app.route("/history")
+def history():
+    """Display chat history"""
+    chat_history = get_chat_history()
+    return render_template("history.html", chat_history=chat_history)
+
+@app.route("/clear_history", methods=["POST"])
+def clear_history():
+    """Clear chat history"""
+    session.pop('chat_history', None)
+    return redirect(url_for('history'))
 
 if __name__ == "__main__":
     # app.run(debug=True) # for local use

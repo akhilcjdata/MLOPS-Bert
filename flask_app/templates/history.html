@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat History - Sentiment Analysis</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            text-align: center;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .navigation {
+            margin-bottom: 20px;
+        }
+        .nav-link {
+            color: #007bff;
+            text-decoration: none;
+            margin: 0 10px;
+            font-size: 16px;
+        }
+        .nav-link:hover {
+            text-decoration: underline;
+        }
+        .chat-entry {
+            background: #f8f9fa;
+            margin: 15px 0;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #007bff;
+            text-align: left;
+        }
+        .chat-timestamp {
+            font-size: 12px;
+            color: #6c757d;
+            margin-bottom: 8px;
+        }
+        .chat-text {
+            margin-bottom: 10px;
+            font-size: 16px;
+            line-height: 1.4;
+        }
+        .chat-result {
+            font-weight: bold;
+            padding: 5px 10px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+        .positive {
+            color: #155724;
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+        }
+        .negative {
+            color: #721c24;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+        }
+        .no-history {
+            color: #6c757d;
+            font-style: italic;
+            font-size: 18px;
+            margin: 40px 0;
+        }
+        .clear-button {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            margin-top: 20px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .clear-button:hover {
+            background-color: #c82333;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>📝 Chat History</h1>
+        
+        <div class="navigation">
+            <a href="/" class="nav-link">🏠 Back to Home</a>
+            {% if chat_history %}
+                <form method="POST" action="/clear_history" style="display: inline;">
+                    <button type="submit" class="clear-button" onclick="return confirm('Are you sure you want to clear all chat history?')">🗑️ Clear History</button>
+                </form>
+            {% endif %}
+        </div>
+
+        {% if chat_history %}
+            <div class="chat-history">
+                {% for chat in chat_history[::-1] %}  <!-- Reverse to show newest first -->
+                    <div class="chat-entry">
+                        <div class="chat-timestamp">{{ chat.timestamp }}</div>
+                        <div class="chat-text"><strong>Text:</strong> {{ chat.text }}</div>
+                        <div class="chat-result {% if chat.prediction == 1 %}positive{% else %}negative{% endif %}">
+                            {% if chat.prediction == 1 %}
+                                😊 Positive Sentiment
+                            {% else %}
+                                😞 Negative Sentiment
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="no-history">
+                No chat history yet. <a href="/" class="nav-link">Start your first conversation!</a>
+            </div>
+        {% endif %}
+    </div>
+
+</body>
+</html>
