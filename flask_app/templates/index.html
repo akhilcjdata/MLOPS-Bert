@@ -60,6 +60,16 @@
             background-color: #f8d7da;
             border: 1px solid #f5c6cb;
         }
+        .history-link {
+            display: inline-block;
+            margin-top: 10px;
+            color: #007bff;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .history-link:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
@@ -71,6 +81,8 @@
             <textarea id="text" name="text" rows="5" placeholder="Enter your text here..."></textarea><br>
             <button type="submit">Predict</button>
         </form>
+        
+        <a href="/history" class="history-link">📝 View Previous Chats</a>
 
         {% if result is not none %}
             <div class="result {% if result == 1 %}positive{% else %}negative{% endif %}">
